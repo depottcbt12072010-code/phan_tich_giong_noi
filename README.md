@@ -97,3 +97,8 @@ V2.0.0 hợp nhất các năng lực ghi âm, thư viện bản ghi, transcript,
 7. Kiểm tra bản ghi cũ, phát audio, transcript, kho tri thức, theo dõi hành động và mục Báo cáo tổng hợp.
 
 Không nhập API key vào file mã nguồn. Chỉ nhập trong Cài đặt của ứng dụng khi cần gọi Gemini.
+
+
+## V2.0.1 — Stability Hotfix
+
+V2.0.1 fixes an application-startup JavaScript error in the V2.0.0 official package (`async is not defined` at `app.js:308`) that prevented `bind()` from running. It also improves Service Worker activation and cache isolation. See `docs/RELEASE_V2_0_1.md` for the exact root cause and upgrade steps.
