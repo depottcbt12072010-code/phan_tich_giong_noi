@@ -50,7 +50,7 @@ Vietnamese-first PWA starter for personal voice records and text analysis.
 - [ ] Test Gemini with non-sensitive sample text and a restricted Free Tier key
 - [ ] Verify data persists after reload
 
-## V1.0.1 — audio transcription
+## V1.1.0 — audio transcription
 1. Open **Cài đặt** and enter your Gemini API key for the current tab session.
 2. Open a record with an attached audio file.
 3. Choose **Chép lời bằng Gemini**. The app converts browser-recorded audio to mono 16 kHz WAV where possible and sends it to `gemini-3.5-flash-lite`.
@@ -58,3 +58,42 @@ Vietnamese-first PWA starter for personal voice records and text analysis.
 5. You can download the original audio from the record details.
 
 This browser-only API key can be inspected by the person using the browser. Never commit the key to GitHub. Gemini Free Tier has quotas and its data-use terms may permit use of submitted content to improve Google products; do not send confidential recordings. No paid billing should be enabled for the zero-cost setup.
+
+
+V1.1.0 bổ sung retry có giới hạn, exponential backoff + jitter, fallback qua các model Gemini và thông báo phân loại lỗi 429/5xx. Xem `docs/GEMINI_RELIABILITY.md`.
+
+
+## V1.1.0
+- Added local Knowledge search across record title, transcript, and analysis.
+- Added local repeated-topic keyword suggestions.
+- Improved microphone diagnostics and recorder MIME selection for mobile browsers.
+- JSON backup/restore includes audio blobs (base64); large backups may exceed mobile browser memory.
+- No cloud storage or paid backend required; Gemini remains optional and its free quota is not guaranteed.
+
+
+## V1.2.0 — Core Intelligence
+See `docs/V1_2_0_RELEASE_NOTES.md`. Cross-record synthesis requires Gemini key and available Free Tier quota; local search remains free.
+
+
+## V1.3.0 — Decision & Action Tracking
+See `docs/V1_3_0_RELEASE_NOTES.md`. Action extraction uses Gemini when the user explicitly runs it; action list/statuses remain local.
+
+
+## V1.4.0 — Progress Review
+See `docs/V1_4_0_RELEASE_NOTES.md`. AI comparison is manual and evidence-based; it never automatically updates action statuses.
+
+
+# V2.0.0 — Bản tổng hợp chính thức
+
+V2.0.0 hợp nhất các năng lực ghi âm, thư viện bản ghi, transcript, phân tích AI, kho tri thức, tổng hợp liên bản ghi, theo dõi hành động, đối chiếu tiến triển và báo cáo dữ liệu/AI vào một phiên bản thống nhất. Xem `docs/RELEASE_V2_0_0.md`.
+
+## Cập nhật GitHub Pages
+1. Tải và giải nén gói V2.0.0.
+2. Trước khi thay file, mở ứng dụng hiện tại và vào Cài đặt → Xuất dữ liệu để tạo backup JSON.
+3. Trong repository GitHub, thay toàn bộ các file trong thư mục `voice-intelligence-ai` bằng nội dung trong thư mục giải nén (giữ đúng cấu trúc thư mục).
+4. Commit thay đổi; chờ GitHub Pages hoàn tất deploy.
+5. Mở trang bằng HTTPS, làm mới trang. Nếu giao diện cũ còn cache, đóng tab ứng dụng và mở lại; Service Worker V2.0.0 tự thay cache cũ.
+6. Vào Cài đặt → Nhập dữ liệu, chọn file backup nếu dữ liệu chưa hiện.
+7. Kiểm tra bản ghi cũ, phát audio, transcript, kho tri thức, theo dõi hành động và mục Báo cáo tổng hợp.
+
+Không nhập API key vào file mã nguồn. Chỉ nhập trong Cài đặt của ứng dụng khi cần gọi Gemini.

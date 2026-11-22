@@ -1,16 +1,5 @@
-# Roadmap
+# Trạng thái sản phẩm V2.0.0
 
-## V1.0 FREE prototype (current)
-UI, browser audio capture/import, IndexedDB, record library, transcript field, optional Gemini text analysis, JSON backup.
+V2.0.0 là bản tổng hợp chính thức của các chức năng hiện có trong phạm vi PWA miễn phí/local-first. Không tiếp tục thêm module rời trước khi hoàn thành kiểm thử UAT trên thiết bị thật.
 
-## V1.1 local transcription
-Add a separate local Whisper runtime/desktop companion. Avoid downloading large model files into GitHub Pages repository. Provide a user-selected model and hardware checks.
-
-## V1.2 secure Gemini bridge
-Optional local Node.js bridge on the user's computer to hold the API key outside the browser UI. Include explicit local-network pairing, origin allowlist, no request logging of content, and clear consent before sending transcript.
-
-## V1.3 knowledge store
-Local transcript chunking, tags, source references, claim records, contradiction review, and search across user-selected records.
-
-## V1.4 reports
-PDF/CSV/JSON exports, timeline, topic summaries, evidence status and uncertainty labels.
+Các công việc tiếp theo chỉ là vận hành/chất lượng: kiểm thử iOS/Android, kiểm tra phục hồi backup lớn, đánh giá khả năng lưu audio trên quota thiết bị, và cân nhắc backend bảo mật nếu người dùng cần đồng bộ hoặc dùng dữ liệu nhạy cảm. Đây không phải roadmap tính năng chắp vá.
