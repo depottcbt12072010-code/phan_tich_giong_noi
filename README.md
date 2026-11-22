@@ -102,3 +102,10 @@ Không nhập API key vào file mã nguồn. Chỉ nhập trong Cài đặt củ
 ## V2.0.1 — Stability Hotfix
 
 V2.0.1 fixes an application-startup JavaScript error in the V2.0.0 official package (`async is not defined` at `app.js:308`) that prevented `bind()` from running. It also improves Service Worker activation and cache isolation. See `docs/RELEASE_V2_0_1.md` for the exact root cause and upgrade steps.
+
+
+## V2.0.2 — Gemini Model Routing Hotfix
+
+V2.0.2 addresses Gemini generation requests returning HTTP 404 for a model selected by the previous model-list strategy. It tries stable documented Flash model IDs in order and automatically advances to the next model when the API reports a model-specific 404 (or model-specific 400/403). It preserves quota errors (429) without repeated retries, improves diagnostics with the last model and API message, and bumps the service-worker cache. See `docs/RELEASE_V2_0_2.md`.
+
+V2.0.2 uses stable-first model routing (`gemini-3.8-flash` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`) and skips model-specific 404 responses. See `docs/RELEASE_V2_0_2.md`.

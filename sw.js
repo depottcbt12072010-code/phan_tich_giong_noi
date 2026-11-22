@@ -1,8 +1,8 @@
-const CACHE='voice-intelligence-ai-v2-0-1';
+const CACHE='voice-intelligence-ai-v2-0-2';
 const ASSETS=[
   './','./index.html','./manifest.webmanifest',
-  './assets/css/style.css?v=2.0.1',
-  './assets/js/app.js?v=2.0.1',
+  './assets/css/style.css?v=2.0.2',
+  './assets/js/app.js?v=2.0.2',
   './assets/icons/icon.svg'
 ];
 self.addEventListener('install',event=>{

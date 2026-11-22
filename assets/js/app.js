@@ -102,28 +102,34 @@ async function audioBlobToWav(blob){
 }
 
 const GEMINI_PRIMARY_MODEL='gemini-3.8-flash';
+// Prefer stable, documented Flash models. Model-list metadata alone does not
+// guarantee that this project/key can call generateContent on every listed model.
+const GEMINI_CURATED_MODELS=['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite'];
 async function getGeminiModelChain(){
- const cacheKey='voice_intelligence_gemini_models_v1';
+ const cacheKey='voice_intelligence_gemini_models_v2';
+ let discovered=[];
  try{
   const cached=JSON.parse(sessionStorage.getItem(cacheKey)||'null');
-  if(cached?.at&&Date.now()-cached.at<10*60*1000&&Array.isArray(cached.models)&&cached.models.length)return cached.models;
+  if(cached?.at&&Date.now()-cached.at<10*60*1000&&Array.isArray(cached.models))discovered=cached.models;
  }catch(e){}
- try{
-  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{
-   method:'GET',headers:{'x-goog-api-key':geminiKey}
-  });
-  if(res.ok){
-   const body=await res.json();
-   const names=(body.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name||'')&&!/(embedding|tts|live|image|audio)/i.test(m.name||''))
-    .map(m=>String(m.name||'').replace(/^models\//,''));
-   const unique=[...new Set(names)];
-   unique.sort((a,b)=>(a===GEMINI_PRIMARY_MODEL?-1:b===GEMINI_PRIMARY_MODEL?1:a.localeCompare(b)));
-   const selected=unique.slice(0,4);
-   if(selected.length){try{sessionStorage.setItem(cacheKey,JSON.stringify({at:Date.now(),models:selected}))}catch(e){};return selected}
-  }
- }catch(e){}
- // Safe fallback: only the known primary model. Never fabricate fallback model IDs.
- return [GEMINI_PRIMARY_MODEL];
+ if(!discovered.length){
+  try{
+   const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{
+    method:'GET',headers:{'x-goog-api-key':geminiKey}
+   });
+   if(res.ok){
+    const body=await res.json();
+    discovered=(body.models||[])
+     .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name||'')&&!/(embedding|tts|live|image|audio)/i.test(m.name||''))
+     .map(m=>String(m.name||'').replace(/^models\//,''))
+     .filter(n=>/^gemini-3\./.test(n)&&!/(preview|experimental|image|audio|tts|live)/i.test(n));
+    discovered=[...new Set(discovered)];
+    try{sessionStorage.setItem(cacheKey,JSON.stringify({at:Date.now(),models:discovered}))}catch(e){}
+   }
+  }catch(e){}
+ }
+ const ranked=[...GEMINI_CURATED_MODELS,...discovered.sort((a,b)=>a.localeCompare(b))];
+ return [...new Set(ranked)].slice(0,8);
 }
 const waitMs=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function retryDelayMs(response,data,attempt){
@@ -142,11 +148,13 @@ function geminiErrorMessage(data,status){
 async function callGeminiResilient(contents,generationConfig,{onStatus=()=>{},modelChain=null}={}){
  modelChain=modelChain||await getGeminiModelChain();
  let lastError=null;
+ const attempted=[];
  for(let m=0;m<modelChain.length;m++){
   const model=modelChain[m];
+  attempted.push(model);
   let shouldFallback=false;
   for(let attempt=0;attempt<2;attempt++){
-   onStatus(m===0?`Đang gọi Gemini (${model})…`:`Model trước quá tải; đang thử model dự phòng ${model}…`);
+   onStatus(m===0?`Đang gọi Gemini (${model})…`:`Model ${model} không khả dụng; đang thử model dự phòng…`);
    let response,data;
    const controller=new AbortController();
    const timeout=setTimeout(()=>controller.abort(),60000);
@@ -159,17 +167,24 @@ async function callGeminiResilient(contents,generationConfig,{onStatus=()=>{},mo
     });
     data=await response.json().catch(()=>({}));
    }catch(e){
-    if(e.name==='AbortError')lastError=new Error('Yêu cầu Gemini quá thời gian chờ 60 giây. Nội dung của bạn vẫn được giữ nguyên.');
+    if(e.name==='AbortError')lastError=new Error('Yêu cầu Gemini quá thời gian chờ 60 giây.');
     else lastError=new Error('Không kết nối được Gemini. Kiểm tra Internet rồi thử lại.');
     shouldFallback=true;
    }finally{clearTimeout(timeout)}
    if(response?.ok)return {data,model};
    const status=response?.status||0;
+   const apiMessage=data?.error?.message||data?.message||`HTTP ${status}`;
    lastError=new Error(geminiErrorMessage(data,status));
-   if(status===429){
-    lastError.status=429;lastError.apiMessage=data?.error?.message||'';
-    throw lastError;
+   lastError.status=status;lastError.apiMessage=apiMessage;lastError.model=model;
+   const modelUnavailable=(status===404)||
+    (status===400&&/model|generatecontent|not supported|not found/i.test(apiMessage))||
+    (status===403&&/model.*(access|available|permission|support)|(?:access|permission).*model/i.test(apiMessage));
+   if(modelUnavailable){
+    shouldFallback=true;
+    onStatus(`Model ${model} không được API chấp nhận (${status}). Đang thử model tiếp theo…`);
+    break;
    }
+   if(status===429)throw lastError;
    if([408,500,502,503,504].includes(status)||!response){
     if(attempt===0){
      const delay=retryDelayMs(response,data,attempt);
@@ -180,17 +195,18 @@ async function callGeminiResilient(contents,generationConfig,{onStatus=()=>{},mo
     shouldFallback=true;
     break;
    }
-   lastError.status=status;lastError.apiMessage=data?.error?.message||'';
    throw lastError;
   }
   if(shouldFallback&&m<modelChain.length-1){
-   onStatus(`Model ${model} tạm thời không đáp ứng. Đang chuyển model dự phòng…`);
-   await waitMs(350+Math.floor(Math.random()*500));
+   await waitMs(250+Math.floor(Math.random()*350));
    continue;
   }
   if(lastError)break;
  }
- if(lastError)throw lastError;
+ if(lastError){
+  lastError.attemptedModels=attempted;
+  throw lastError;
+ }
  throw new Error('Gemini hiện không thể xử lý yêu cầu. Hãy thử lại sau.');
 }
 function explainGeminiError(error){
@@ -199,7 +215,7 @@ function explainGeminiError(error){
  if(status===503||[500,502,504].includes(status))return 'Các model dự phòng đều đang bận hoặc không khả dụng (5xx). Transcript vẫn được giữ. Hãy thử lại sau vài phút; ứng dụng đã tự retry có giới hạn.';
  if(status===400)return 'Gemini từ chối request (400). Kiểm tra nội dung đầu vào hoặc cấu hình request.';
  if(status===401||status===403)return 'Gemini không chấp nhận API key hoặc key chưa được cấp quyền dùng Gemini API. Kiểm tra key trong AI Studio và quyền API.';
- if(status===404)return 'Model hoặc endpoint không tồn tại/không khả dụng với key này. Cần cập nhật model ID.';
+ if(status===404)return `Gemini trả về 404 cho model ${error?.model||'không rõ'}. API: ${error?.apiMessage||error?.message||'NOT_FOUND'}. Đã thử ${error?.attemptedModels?.length||1} model; ứng dụng đã thử các model dự phòng. Nếu tất cả đều 404, kiểm tra quyền truy cập model của project/key trong Gemini API.`;
  if(error?.name==='AbortError')return 'Gemini phản hồi quá lâu. Hãy thử với văn bản ngắn hơn.';
  return error?.message||'Lỗi không xác định khi gọi Gemini.';
 }
@@ -291,7 +307,7 @@ async function exportData(){
  try{const records=await getAll(),payload=[];let total=0;
   for(const r of records){const item={...r};if(r.audio?.blob){total+=r.audio.blob.size;item.audio={name:r.audio.name||'recording',type:r.audio.type||r.audio.blob.type,size:r.audio.size||r.audio.blob.size,dataUrl:await blobToDataUrl(r.audio.blob)}}payload.push(item)}
   if(total>100*1024*1024&&!confirm(`Âm thanh khoảng ${(total/1048576).toFixed(0)} MB. JSON sẽ lớn hơn do mã hóa base64 và có thể không xuất được trên điện thoại. Bạn vẫn muốn tiếp tục?`))return;
-  const blob=new Blob([JSON.stringify({app:'VOICE INTELLIGENCE AI',version:'2.0.1-free',exportedAt:new Date().toISOString(),records:payload},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({app:'VOICE INTELLIGENCE AI',version:'2.0.2-free',exportedAt:new Date().toISOString(),records:payload},null,2)],{type:'application/json'});
   downloadBlob(blob,'voice-intelligence-backup-'+new Date().toISOString().slice(0,10)+'.json');
  }catch(e){alert('Không thể xuất sao lưu. Có thể dung lượng âm thanh vượt bộ nhớ trình duyệt: '+e.message)}
 }
