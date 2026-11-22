@@ -73,7 +73,7 @@ async function transcribeRecord(id){
   if(wav.size>15*1024*1024)throw new Error('Âm thanh sau chuyển đổi lớn hơn 15 MB. Hãy thử file ngắn hơn.');
   btn.textContent='Đang gửi âm thanh…';
   const base64=await blobToBase64(wav);
-  const model='gemini-3.8-flash';
+  const model='gemini-3.5-flash-lite';
   const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
    method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':geminiKey},
    body:JSON.stringify({contents:[{parts:[
