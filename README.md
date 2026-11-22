@@ -9,15 +9,16 @@ Vietnamese-first PWA starter for personal voice records and text analysis.
 - Local record storage with IndexedDB
 - Record library, search, detail and playback
 - Transcript/notes input
-- Gemini text analysis module (optional)
+- Gemini text analysis and audio transcription module (optional)
 - Basic offline sentence extraction (not semantic AI)
+- Gemini audio transcription for short recordings (converts supported browser audio to 16 kHz mono WAV before sending)
 - JSON export/import of text metadata and transcripts
 - PWA manifest and service worker
 
 ## Important limitations of this prototype
 - This is an initial working prototype, not a fully production-audited release.
-- Speech-to-text (Whisper) is not wired yet. Add transcript manually or use a separately installed local transcription service in a later module.
-- Gemini integration sends only the text in the analysis box. Audio files are not sent to Gemini.
+- Local Whisper is not wired in this release. Short audio can be transcribed using Gemini Free Tier; this requires an API key and internet access.
+- Gemini text analysis sends the text in the analysis box. The new “Chép lời bằng Gemini” action sends the selected recording's audio to Google for transcription. Use only non-sensitive recordings; review Google's current Free Tier data-use terms.
 - The Gemini API key is held only in JavaScript memory for the current page session, but a browser-side key is still visible to the device user/network inspection. Do not put a personal or billing-enabled key here. Use a restricted key and Free Tier only. A secure local proxy can be added in a later version.
 - Records and audio are stored in the browser's IndexedDB. Clearing site data can delete them. Export backups regularly. Audio is not included in JSON backup.
 - PWA installation requires HTTPS (GitHub Pages provides HTTPS).
@@ -48,3 +49,12 @@ Vietnamese-first PWA starter for personal voice records and text analysis.
 - [ ] Export JSON and re-import it
 - [ ] Test Gemini with non-sensitive sample text and a restricted Free Tier key
 - [ ] Verify data persists after reload
+
+## V1.0.1 — audio transcription
+1. Open **Cài đặt** and enter your Gemini API key for the current tab session.
+2. Open a record with an attached audio file.
+3. Choose **Chép lời bằng Gemini**. The app converts browser-recorded audio to mono 16 kHz WAV where possible and sends it to `gemini-3.5-flash-lite`.
+4. Review the transcript, correct names/numbers, then choose **Lưu transcript**.
+5. You can download the original audio from the record details.
+
+This browser-only API key can be inspected by the person using the browser. Never commit the key to GitHub. Gemini Free Tier has quotas and its data-use terms may permit use of submitted content to improve Google products; do not send confidential recordings. No paid billing should be enabled for the zero-cost setup.
